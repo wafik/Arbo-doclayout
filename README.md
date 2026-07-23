@@ -49,8 +49,25 @@ cmake --build build/windows-x64 --config Release
 | `cacheDir` | `~/.cache/arbo-doclayout` | Download cache |
 | `threshold` | `0.5` | Min box score |
 | `modelInputSize` | `800` | Square model input |
+| `includeMasks` | `false` | V3 only — fill `PageLayout::masks` (200×200 int32 per box) |
 | `useCuda` / `useTensorrt` | `false` | ORT providers |
 | `useFp16` | `true` | TensorRT only |
+
+### V3 masks
+
+PP-DocLayoutV3 outputs per-region masks. Point `modelPath` / `modelUrl` at a V3 ONNX
+and set `includeMasks = true`:
+
+```cpp
+cfg.modelUrl = arbo::doclayout::kDefaultV3ModelUrl; // or local path
+cfg.includeMasks = true;
+auto page = engine.analyze("page.jpg");
+// page.masks[i] is 200*200 int32, aligned with page.boxes[i]
+```
+
+CLI: `--model path/to/PP-DocLayoutV3.onnx --include-masks`
+
+V2 models ignore `includeMasks` (boxes only).
 
 ## Labels (25)
 
@@ -60,9 +77,9 @@ cmake --build build/windows-x64 --config Release
 
 v1 does **not** link arboOCR. Later: install this static lib and run layout before OCR crops, or vendor as a subdirectory.
 
-## Non-goals (v1)
+## Non-goals (still)
 
-V3 masks, browser/WASM, OCR text recognition, tunable IoU/IoMin public knobs.
+Browser/WASM, OCR text recognition, tunable IoU/IoMin public knobs.
 
 ## License
 

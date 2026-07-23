@@ -114,6 +114,7 @@ std::vector<LayoutBox> postprocessBoxes(
         box.y1 = std::round(data[offset + 3] * 10.f) / 10.f;
         box.x2 = std::round(data[offset + 4] * 10.f) / 10.f;
         box.y2 = std::round(data[offset + 5] * 10.f) / 10.f;
+        box.sourceIndex = i;
         scored.push_back({std::move(box), data[offset + 6]});
     }
 
@@ -128,6 +129,25 @@ std::vector<LayoutBox> postprocessBoxes(
 
     boxes = mergeSameLabelContained(boxes);
     return applyCrossClassNMS(boxes);
+}
+
+std::vector<std::vector<int32_t>> extractMasks(
+    const int32_t* masksData,
+    int numRawBoxes,
+    const std::vector<LayoutBox>& boxes
+) {
+    std::vector<std::vector<int32_t>> masks;
+    if (!masksData || numRawBoxes <= 0) return masks;
+    masks.reserve(boxes.size());
+    for (const auto& box : boxes) {
+        if (box.sourceIndex < 0 || box.sourceIndex >= numRawBoxes) {
+            masks.emplace_back();
+            continue;
+        }
+        const int32_t* start = masksData + static_cast<size_t>(box.sourceIndex) * kMaskSize;
+        masks.emplace_back(start, start + kMaskSize);
+    }
+    return masks;
 }
 
 } // namespace arbo::doclayout

@@ -17,6 +17,8 @@ struct EngineConfig {
     std::string cacheDir;   // empty → defaultCacheDir()
     float threshold = kDefaultThreshold;
     int modelInputSize = kDefaultModelInputSize;
+    /// V3 only: fill PageLayout::masks (200×200 int32 per kept box). Off by default.
+    bool includeMasks = false;
     bool useCuda = false;
     bool useTensorrt = false;
     bool useFp16 = true;

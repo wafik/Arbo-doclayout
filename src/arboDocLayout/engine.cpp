@@ -150,18 +150,60 @@ PageLayout Engine::run(const cv::Mat& src, const std::string& imageName) {
         if (!outputs.empty()) {
             auto dims = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
             if (dims.size() >= 2 && dims[0] > 0 && dims[1] > 0) {
+                const int numBoxes = static_cast<int>(dims[0]);
+                const int numCols = static_cast<int>(dims[1]);
+                // V3: 7 cols; V2: 8 cols — both share the first 7 fields.
                 result.boxes = postprocessBoxes(
                     outputs[0].GetTensorData<float>(),
-                    static_cast<int>(dims[0]),
-                    static_cast<int>(dims[1]),
+                    numBoxes,
+                    numCols,
                     config_.threshold);
+
+                // V3 masks on output[2] when requested (ppu: includeMasks + ≥3 outputs).
+                const bool isV3 = (numCols == 7);
+                if (config_.includeMasks && isV3 && outputs.size() >= 3) {
+                    auto maskInfo = outputs[2].GetTensorTypeAndShapeInfo();
+                    auto maskDims = maskInfo.GetShape();
+                    // Expected: [N, 200, 200] or flat [N*200*200]
+                    int64_t maskElems = 1;
+                    for (auto d : maskDims) {
+                        if (d > 0) maskElems *= d;
+                    }
+                    const int64_t need = static_cast<int64_t>(numBoxes) * kMaskSize;
+                    if (maskElems >= need) {
+                        const auto elemType = maskInfo.GetElementType();
+                        if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32) {
+                            result.masks = extractMasks(
+                                outputs[2].GetTensorData<int32_t>(),
+                                numBoxes,
+                                result.boxes);
+                        } else if (elemType == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64) {
+                            // Some exports use int64 — narrow to int32 vectors.
+                            const int64_t* raw = outputs[2].GetTensorData<int64_t>();
+                            std::vector<int32_t> tmp(static_cast<size_t>(need));
+                            for (int64_t i = 0; i < need; ++i) {
+                                tmp[static_cast<size_t>(i)] = static_cast<int32_t>(raw[i]);
+                            }
+                            result.masks = extractMasks(tmp.data(), numBoxes, result.boxes);
+                        } else {
+                            log(LogLevel::Warn, "analyze: V3 mask tensor type unsupported");
+                        }
+                    } else {
+                        log(LogLevel::Warn, "analyze: V3 mask tensor too small");
+                    }
+                } else if (config_.includeMasks && !isV3) {
+                    log(LogLevel::Debug, "analyze: includeMasks set but model is not V3 (numCols="
+                        + std::to_string(numCols) + ")");
+                }
             }
         }
 
-        log(LogLevel::Debug, "analyze: " + std::to_string(result.boxes.size()) + " boxes");
+        log(LogLevel::Debug, "analyze: " + std::to_string(result.boxes.size()) + " boxes"
+            + (result.masks.empty() ? "" : (", masks=" + std::to_string(result.masks.size()))));
     } catch (const std::exception& ex) {
         log(LogLevel::Error, std::string("analyze failed: ") + ex.what());
         result.boxes.clear();
+        result.masks.clear();
     }
 
     result.elapsedMs = elapsed();

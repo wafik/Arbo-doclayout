@@ -9,6 +9,7 @@ TEST_CASE("EngineConfig has sane defaults") {
     CHECK(cfg.threshold == doctest::Approx(0.5f));
     CHECK(cfg.modelInputSize == 800);
     CHECK(cfg.modelPath.empty());
+    CHECK(cfg.includeMasks == false);
     CHECK(cfg.useCuda == false);
     CHECK(cfg.useTensorrt == false);
     CHECK(cfg.useFp16 == true);
