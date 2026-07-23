@@ -1,0 +1,11 @@
+{
+  "name": "arbo-doclayout",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "opencv",
+    "onnxruntime",
+    "curl",
+    "doctest",
+    "cxxopts"
+  ]
+}
