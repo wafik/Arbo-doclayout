@@ -4,11 +4,15 @@ project(arboDocLayout CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(doctest CONFIG REQUIRED)
-find_package(cxxopts CONFIG REQUIRED)
+option(ARBODOCLAYOUT_BUILD_TESTS "Build tests and the demo CLI" ON)
+
 find_package(onnxruntime CONFIG REQUIRED)
 find_package(OpenCV CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
+if(ARBODOCLAYOUT_BUILD_TESTS)
+    find_package(doctest CONFIG REQUIRED)
+    find_package(cxxopts CONFIG REQUIRED)
+endif()
 
 add_library(arboDocLayout STATIC
     src/arboDocLayout/types.cpp
@@ -22,6 +26,7 @@ add_library(arboDocLayout STATIC
 target_include_directories(arboDocLayout PUBLIC include ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(arboDocLayout PUBLIC ${OpenCV_LIBS} CURL::libcurl onnxruntime::onnxruntime)
 
+if(ARBODOCLAYOUT_BUILD_TESTS)
 enable_testing()
 add_executable(arbo_doclayout_tests
     tests/test_main.cpp
@@ -38,3 +43,4 @@ add_test(NAME arbo_doclayout_tests COMMAND arbo_doclayout_tests
 
 add_executable(arbo_doclayout_demo cli/arbo_doclayout_demo.cpp)
 target_link_libraries(arbo_doclayout_demo PRIVATE arboDocLayout cxxopts::cxxopts)
+endif()
